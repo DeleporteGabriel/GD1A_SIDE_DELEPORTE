@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" /><title>Mon 1er jeu Phaser</title>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.51.0/dist/phaser.js">
+    </script>
+
+    <style type="text/css"> body 
+    
+        { margin: 0; 
+        }
+        
+    
+    </style>
+</head>
+<body>
+
+    <script type="text/javascript">
+        var config = {
+            type: Phaser.AUTO,
+            width: 960, height: 540,
+            physics: {
+            default: 'arcade',
+            arcade: {
+            gravity: { y: 0 },
+            debug: false
+            }},
+            scene: {preload: preload, create: create, update: update }
+            };
+
+        game = new Phaser.Game(config);
+
+        function preload(){
+
+            this.load.image("Phaser_tuilesdejeu", "assets/kouign amann wish.png");
+
+            this.load.image("Background", "assets/meteorites.png");
+
+            this.load.tilemapTiledJSON("carte", "map.json");
+
+            this.load.spritesheet('Tardigrade','assets/Tardigrade.png',
+            { frameWidth: 64, frameHeight: 64 });
+            this.load.spritesheet('Degat','assets/TardigradeHurt.png',
+            { frameWidth: 64, frameHeight: 64 });
+
+            this.load.spritesheet('Bonus','assets/Tardigrade de metal.png',
+            { frameWidth: 64, frameHeight: 64 });
+            this.load.spritesheet('MetalHurt','assets/tardigrade de metal hurt.png',
+            { frameWidth: 64, frameHeight: 64 });
+
+            
+            this.load.spritesheet('AntmanFusee', 'assets/AntmanDansSaFusee.png', 
+            {frameWidth: 64, frameHeight:64});
+            this.load.spritesheet('AntmanDed', 'assets/ANTMAN EN PLS.png', 
+            {frameWidth: 24, frameHeight:24});
+
+            this.load.spritesheet('PV', 'assets/sheetPV.png', 
+            {frameWidth: 64, frameHeight:64
+        });
+
+            this.load.image('spr_viseur','assets/viseur.png');
+
+            this.load.image('powerUp','assets/powerUp.png');
+
+            this.load.image("logoHP", "assets/point de vie 3.png");}
+
+            
+            
+
+
+
+        var player;
+        var cursors;
+        var viseur;
+        var pointer;
+
+        var Xviseur;
+        var Yviseur;
+
+        Xviseur = 250;
+        Yviseur = 750;
+
+        //ennemis
+        var ennemi1;
+        var ennemi2;
+        var ennemi3;
+        var ennemi4;
+        var ennemi5;
+        var ennemi6;
+        
+        var powerup;
+        var getPowerUp = false;
+
+        var chronoTexte;
+        var monTimer;
+        var chrono = 0;  
+        var chronoMinute = 0;
+
+        var MarqueurVie = 0;
+        var FrameInvincibility = false;
+        var deMetal = false;
+
+        var pointDeVie = 3
+
+        var fond;
+
+
+
+
+
+        function create (){
+
+            pointer = this.input
+            
+            fond = this.add.image(2880, 540, "Background");
+            const carteDuNiveau = this.add.tilemap("carte");
+
+            // importer TileSet 
+           const tileset = carteDuNiveau.addTilesetImage(
+                    "KA",
+                    "Phaser_tuilesdejeu"
+                    );                    
+
+            // importer les calques 
+            const background = carteDuNiveau.createStaticLayer(
+                    "background",
+                    tileset
+                    );
+            const décor_background = carteDuNiveau.createStaticLayer(
+                    "décor background",
+                    tileset
+                    );
+            const plateformes = carteDuNiveau.createStaticLayer(
+                    "plateformes",
+                    tileset
+                    );  
+            const plateforme2 = carteDuNiveau.createStaticLayer(
+                    "plateforme2",
+                    tileset
+                    );  
+            const plateform3 = carteDuNiveau.createStaticLayer(
+                    "plateform3",
+                    tileset
+                    );
+        
+            player = this.physics.add.sprite(250,750, 'persoInterieur')
+
+            //Collision sur les obstacles one shot  
+            plateformes.setCollisionByProperty({ estSolide: true });       
+            this.physics.add.collider(player, plateformes, instantDeath, null, this);
+
+            plateforme2.setCollisionByProperty({ estSolide: true });       
+            this.physics.add.collider(player, plateforme2, instantDeath, null, this);
+
+            plateform3.setCollisionByProperty({ estSolide: true });       
+            this.physics.add.collider(player, plateform3, instantDeath, null, this);
+
+            viseur = this.physics.add.sprite(250,750, 'spr_viseur')  
+
+            this.physics.world.setBounds(0, 0, 5760, 1080);
+            this.cameras.main.setBounds(0, 0, 5760, 1080);
+            this.cameras.main.startFollow(player);  
+
+            //animation du tardigrade
+            player.setCollideWorldBounds(true);
+            this.anims.create({
+                key: 'Idle',
+                frames: [ { key: 'Tardigrade', frame: 0 } ],
+                frameRate: 20
+            });
+            this.anims.create({
+                key: 'Degats',
+                frames: this.anims.generateFrameNumbers('Degat', {start:0,end:1}),
+                frameRate: 5,
+                repeat: -1
+            });
+            this.anims.create({
+                key: 'Solide',
+                frames: [ { key: 'Bonus', frame: 0 } ],
+                frameRate: 20
+            });
+            this.anims.create({
+                key: 'SolideDegats',
+                frames: this.anims.generateFrameNumbers('MetalHurt', {start:0,end:1}),
+                frameRate: 5,
+                repeat: -1
+            });
+
+            player.anims.play('Idle', true);
+
+            //ennemis
+            this.anims.create({
+                key: 'AntMan',
+                frames: this.anims.generateFrameNumbers('AntmanFusee', {start:0,end:2}),
+                frameRate: 10,
+                repeat: -1
+            });
+            this.anims.create({
+                key: 'AntmanMort',
+                frames: this.anims.generateFrameNumbers('AntmanDed', {start:0,end:1}),
+                frameRate: 2,
+                repeat: -1
+            });
+
+
+            ennemi1 = this.physics.add.sprite(1200, 250, "AntmanFusee")
+            this.physics.add.overlap(ennemi1, player, death1, null, this);
+            ennemi1.anims.play('AntMan', true);
+
+            ennemi2 = this.physics.add.sprite(600, 650, "AntmanFusee")
+            this.physics.add.overlap(ennemi2, player, death2, null, this);
+            ennemi2.anims.play('AntMan', true);
+
+            ennemi3 = this.physics.add.sprite(600, 850, "AntmanFusee")
+            this.physics.add.overlap(ennemi3, player, death3, null, this);
+            ennemi3.anims.play('AntMan', true);
+
+            ennemi4 = this.physics.add.sprite(1858, 704, "AntmanFusee")
+            this.physics.add.overlap(ennemi4, player, death4, null, this);
+            ennemi4.anims.play('AntMan', true);
+
+            ennemi5 = this.physics.add.sprite(2000, 544, "AntmanFusee")
+            this.physics.add.overlap(ennemi5, player, death5, null, this);
+            ennemi5.anims.play('AntMan', true);
+
+            ennemi6 = this.physics.add.sprite(2000, 895, "AntmanFusee")
+            this.physics.add.overlap(ennemi6, player, death6, null, this);
+            ennemi6.anims.play('AntMan', true);
+
+            //power up
+            powerup = this.physics.add.sprite(500, 300, 'powerUp');
+            this.physics.add.overlap(powerup, player, upgraded, null, this);
+
+
+            //chronomètre
+            monTimer = this.time.addEvent({
+                delay: 1000,
+                callback: timer,
+                callbackScope: this,
+                loop: true
+            }); 
+
+            //point de vie
+            coeurEcran = this.physics.add.sprite(875, 75,'logoHP');
+            coeurEcran.setScrollFactor(0);
+            //sprite
+            this.anims.create({
+                key: 'PV3',
+                frames: [ { key: 'PV', frame: 3 } ],
+                frameRate: 20
+            });
+            this.anims.create({
+                key: 'PV2',
+                frames: [ { key: 'PV', frame: 2 } ],
+                frameRate: 20
+            });
+            this.anims.create({
+                key: 'PV1',
+                frames: [ { key: 'PV', frame: 1 } ],
+                frameRate: 20
+            });
+            this.anims.create({
+                key: 'PV0',
+                frames: [ { key: 'PV', frame: 0 } ],
+                frameRate: 20
+            });
+            coeurEcran.anims.play('PV3', true);
+
+
+            // parallax
+            fond.setScrollFactor(0.2);
+        }
+
+        function update(){
+
+            //PVs 
+            if (pointDeVie == 3) {
+                coeurEcran.anims.play('PV3', true);
+            }
+            else if (pointDeVie == 2) {
+                coeurEcran.anims.play('PV2', true);
+            }
+            else if (pointDeVie == 1) {
+                coeurEcran.anims.play('PV1', true);
+            }
+            else {
+                coeurEcran.anims.play('PV0', true);
+            }
+            if ((((chronoMinute*60) + chrono) - MarqueurVie) > 2) {
+                FrameInvincibility = false;
+            }
+
+            //Viseur
+
+            if (ennemi1.x < (this.cameras.main.worldView.x + 1200)) {
+                ennemi1.x -= 2
+            }
+            if (ennemi2.x < (this.cameras.main.worldView.x + 1200)) {
+                ennemi2.x -= 2
+            }
+            if (ennemi3.x < (this.cameras.main.worldView.x + 1200)) {
+                ennemi3.x -= 2
+            }
+            if (ennemi4.x < (this.cameras.main.worldView.x + 1200)) {
+                ennemi4.x -= 2
+            }
+            if (ennemi5.x < (this.cameras.main.worldView.x + 1200)) {
+                ennemi5.x -= 2
+            }
+            if (ennemi6.x < (this.cameras.main.worldView.x + 1200)) {
+                ennemi6.x -= 2
+            }
+
+            viseur.x = pointer.x + this.cameras.main.worldView.x
+            viseur.y = pointer.y + this.cameras.main.worldView.y
+
+            player.angle += 0.5;
+
+            if (game.input.activePointer.primaryDown) {
+                player.angle += 3;
+                this.physics.moveTo(player,viseur.x,viseur.y,150);
+                Xviseur = viseur.x
+                Yviseur = viseur.y
+            }
+            else {
+                if (player.x != Xviseur && player.y != Yviseur) {
+                    this.physics.moveTo(player,Xviseur,Yviseur,50);
+                }
+            }
+            //player anim
+            if (FrameInvincibility == false) {
+                player.anims.play('Idle', true);
+            }
+            else if (FrameInvincibility == true) {
+                player.anims.play('Degats', true);
+            }
+
+            if (game.input.activePointer.rightButtonDown() && getPowerUp == true) {
+                    player.anims.play('Solide', true);
+                deMetal = true;
+            }
+            else {deMetal = false;}
+        }
+
+        function timer () {
+            chrono += 1; 
+            if (chrono >= 60){
+                chronoMinute += 1
+                chrono = 0
+            }
+        }   
+
+        function vie(){
+            hpTexte.setText(pointDeVie); 
+        }
+
+        function upgraded(){
+            getPowerUp = true;
+            powerup.disableBody(true, true);
+        }
+
+        function death1(){
+            if (FrameInvincibility == false && deMetal == false){
+                pointDeVie = pointDeVie - 1
+                MarqueurVie = (chronoMinute*60) + chrono
+                FrameInvincibility = true;
+                if (pointDeVie == 0) {
+                    this.scene.restart()
+                    pointDeVie = 3;
+                    FrameInvincibility = false;
+                    MarqueurVie = 0;
+                }
+            }
+            else if (deMetal == true){
+                ennemi1.disableBody(true, true);
+            }
+        }
+
+        function death2(){
+            if (FrameInvincibility == false && deMetal == false){
+                pointDeVie = pointDeVie - 1
+                MarqueurVie = (chronoMinute*60) + chrono
+                FrameInvincibility = true;
+                if (pointDeVie == 0) {
+                    this.scene.restart()
+                    pointDeVie = 3;
+                    FrameInvincibility = false;
+                    MarqueurVie = 0;
+                }
+            }
+            else if (deMetal == true){
+                ennemi2.disableBody(true, true);
+            }
+        }
+
+        function death3(){
+            if (FrameInvincibility == false && deMetal == false){
+                pointDeVie = pointDeVie - 1
+                MarqueurVie = (chronoMinute*60) + chrono
+                FrameInvincibility = true;
+                if (pointDeVie == 0) {
+                    this.scene.restart()
+                    pointDeVie = 3;
+                    FrameInvincibility = false;
+                    MarqueurVie = 0;
+                }
+            }
+            else if (deMetal == true){
+                ennemi3.disableBody(true, true);
+            }
+        }
+
+        function death4(){
+            if (FrameInvincibility == false && deMetal == false){
+                pointDeVie = pointDeVie - 1
+                MarqueurVie = (chronoMinute*60) + chrono
+                FrameInvincibility = true;
+                if (pointDeVie == 0) {
+                    this.scene.restart()
+                    pointDeVie = 3;
+                    FrameInvincibility = false;
+                    MarqueurVie = 0;
+                }
+            }
+            else if (deMetal == true){
+                ennemi4.disableBody(true, true);
+            }
+        }
+
+        function death5(){
+            if (FrameInvincibility == false && deMetal == false){
+                pointDeVie = pointDeVie - 1
+                MarqueurVie = (chronoMinute*60) + chrono
+                FrameInvincibility = true;
+                if (pointDeVie == 0) {
+                    this.scene.restart()
+                    pointDeVie = 3;
+                    FrameInvincibility = false;
+                    MarqueurVie = 0;
+                }
+            }
+            else if (deMetal == true){
+                ennemi5.disableBody(true, true);
+            }
+        }
+
+        function death6(){
+            if (FrameInvincibility == false && deMetal == false){
+                pointDeVie = pointDeVie - 1
+                MarqueurVie = (chronoMinute*60) + chrono
+                FrameInvincibility = true;
+                if (pointDeVie == 0) {
+                    this.scene.restart()
+                    pointDeVie = 3;
+                    FrameInvincibility = false;
+                    MarqueurVie = 0;
+                }
+            }
+            else if (deMetal == true){
+                ennemi6.disableBody(true, true);
+            }
+        }
+
+        function instantDeath() {
+            this.scene.restart()
+            pointDeVie = 3;
+            FrameInvincibility = false;
+            MarqueurVie = 0;
+
+        }
+
+
+
+        
+
+        
+
+    </script>
+
+</body>
+</html>

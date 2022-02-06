@@ -1,0 +1,3 @@
+Souris : déplacer le curseur
+Clique gauche : aller vers le curseur
+Clique droit maintenu (quand le power up est obtenu) : tuer les ennemis (en leur passant dessus)
